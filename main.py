@@ -5,7 +5,7 @@ import uuid
 import aiohttp
 from aiohttp import web
 
-# --- 🛠 CONFIGURATION (Config.json se data lena) ---
+# --- 🛠 CONFIGURATION (Loads from your config.json) ---
 def load_config():
     if os.path.exists("config.json"):
         with open("config.json", "r") as f:
@@ -14,10 +14,10 @@ def load_config():
 
 config = load_config()
 TARGET_URL = config.get("video_url")
-# [span_1](start_span)Render automatic port set karta hai[span_1](end_span)
+# [span_2](start_span)Render sets the PORT environment variable automatically[span_2](end_span)
 PORT = int(os.environ.get("PORT", 8080)) 
 
-# --- 🌐 HTTP SERVER FOR RENDER (Bot ko active rakhne ke liye) ---
+# -[span_3](start_span)-- 🌐 HTTP SERVER FOR RENDER (Keeps the service alive)[span_3](end_span) ---
 async def handle_health_check(request):
     return web.Response(text="Bot is Alive and Running!")
 
@@ -29,20 +29,20 @@ async def start_web_server():
     site = web.TCPSite(runner, '0.0.0.0', PORT)
     await site.start()
 
-# --- ⚡ ZEFAME API ENGINE (Source logic) ---
+# -[span_4](start_span)-- ⚡ ZEFAME API ENGINE (Pure Logic from your files)[span_4](end_span) ---
 class ZefameEngine:
     def __init__(self, url, s_type='views'):
         self.url = url
-        # [span_2](start_span)Views ke liye 237, Likes ke liye 234[span_2](end_span)
+        # [span_5](start_span)service 237 for views, 234 for likes[span_5](end_span)
         self.service_id = 237 if s_type == 'views' else 234 
-        [span_3](start_span)self.endpoint = "https://zefame-free.com/api_free.php?action=order"[span_3](end_span)
+        [span_6](start_span)self.endpoint = "https://zefame-free.com/api_free.php?action=order"[span_6](end_span)
     
     async def request_boost(self):
         try:
-            # [span_4](start_span)URL se postId nikalna[span_4](end_span)
+            # [span_7](start_span)Splits URL to get postId[span_7](end_span)
             pid = self.url.split("/")[4] if "/" in self.url else "" 
             async with aiohttp.ClientSession() as session:
-                # [span_5](start_span)Data dictionary wahi hai jo aapne bheja tha[span_5](end_span)
+                # [span_8](start_span)Data structure exactly as per your requirement[span_8](end_span)
                 data = {
                     "service": self.service_id, 
                     "link": self.url, 
@@ -51,26 +51,26 @@ class ZefameEngine:
                 }
                 async with session.post(self.endpoint, data=data, timeout=15) as r:
                     res = await r.json()
+                    # [span_9](start_span)Handling success and cooldowns[span_9](end_span)
                     if res.get('success'): 
                         return "OK", None
                     if 'timeLeft' in str(res): 
                         return "WAIT", res['data']['timeLeft']
-        except: 
-            return "ERR", "Connection Timeout"
+        except Exception as e: 
+            return "ERR", str(e)
         return "FAIL", "Unknown"
 
-# --- 🚀 AUTOMATED LOOP (Direct Server par chalega) ---
+# --- 🚀 AUTOMATIC EXECUTION LOOP ---
 async def run_auto_boost():
     if not TARGET_URL or TARGET_URL == "None":
-        print("❌ Error: config.json mein URL nahi mila!")
+        print("❌ Error: No URL found in config.json")
         return
 
-    print(f"🛰️ Server start ho gaya hai...")
+    print(f"🛰️ INITIATING SERVER CONNECTION...")
     print(f"🎯 Target URL: {TARGET_URL}")
     
     engine = ZefameEngine(TARGET_URL, 'views')
     done = 0
-    # [span_6](start_span)Config se boost amount lena[span_6](end_span)
     total_needed = config.get("amount_of_boosts", 999999)
 
     while done < total_needed:
@@ -78,30 +78,31 @@ async def run_auto_boost():
         
         if status == "OK":
             done += 1
-            print(f"✅ Kaam chalu hai: {done} batches pure huye.")
-            [span_7](start_span)await asyncio.sleep(5) # Thoda delay taaki spam na ho[span_7](end_span)
+            print(f"✅ BATCH {done} COMPLETED SUCCESSFULLY!")
+            # [span_10](start_span)5-second delay to prevent bans[span_10](end_span)
+            await asyncio.sleep(5) 
             
         elif status == "WAIT":
-            # [span_8](start_span)Agar API limit aaye toh wait karna[span_8](end_span)
-            print(f"⏳ Limit aa gayi! {data} seconds wait kar raha hoon...")
+            # [span_11](start_span)Handles API cooldown using timeLeft from response[span_11](end_span)
+            print(f"⏳ API LIMIT! WAITING {data} SECONDS...")
             await asyncio.sleep(int(data))
             
         else:
-            print("⚠️ Error! 10 second mein dobara koshish karenge...")
+            print(f"⚠️ ERROR: {data}. RETRYING IN 10 SECONDS...")
             await asyncio.sleep(10)
 
-# --- 🏁 MAIN EXECUTION ---
+# --- 🏁 MAIN ENTRY POINT ---
 async def main():
-    # HTTP server aur Automation dono ek saath start honge
+    # Starts both the health check server and the booster loop simultaneously
     await asyncio.gather(
         start_web_server(),
         run_auto_boost()
     )
 
 if __name__ == "__main__":
-    print("💎 Insta-Booster Direct Mode Online!")
+    print("💎 Premium Insta-Booster is Online (Auto-Mode)!")
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("Bot band ho gaya.")
+        print("Bot stopped by user.")
         
